@@ -12,57 +12,104 @@ namespace helloExcel
     {
         private static void Main(string[] args)
         {
+
+            using (SpreadsheetDocument xl = SpreadsheetDocument.Open("test.xlsx", true))
+            {
+                foreach (WorksheetPart wsp in xl.WorkbookPart.WorksheetParts)
+                {
+                    foreach (TableDefinitionPart tdp in wsp.TableDefinitionParts)
+                    {
+                        Console.WriteLine("test");
+                        // for example
+                        // tdp.Table.AutoFilter = new AutoFilter() { Reference = "B2:D3" };
+                    }
+                }
+            }
+
+
+
+
+
+
+
+
+            List<Import> list = new List<Import>();
             using (SpreadsheetDocument document =
                 SpreadsheetDocument.Open("test.xlsx", false))
             {
                 var workbookPart = document.WorkbookPart;
                 var tmp = document.WorkbookPart.WorksheetParts.First().Worksheet.Elements<SheetData>().First();
 
-                foreach (var row in tmp.Elements<Row>())
+                var iter = GetStrings(workbookPart, tmp);
+                bool startParse = false;
+
+                foreach (var item in iter)
                 {
-                    foreach (var cell in row.Elements<Cell>())
+                    if (item == "Комнатность")
                     {
-                        string cellValue = string.Empty;
-
-                        if (cell.DataType != null)
-                        {
-                            if (cell.DataType == CellValues.SharedString)
-                            {
-                                int id = -1;
-
-                                if (Int32.TryParse(cell.InnerText, out id))
-                                {
-                                    SharedStringItem item = GetSharedStringItemById(workbookPart, id);
-
-                                    if (item.Text != null)
-                                    {
-                                        cellValue = item.Text.Text;
-                                    }
-                                    else if (item.InnerText != null)
-                                    {
-                                        cellValue = item.InnerText;
-                                    }
-                                    else if (item.InnerXml != null)
-                                    {
-                                        cellValue = item.InnerXml;
-                                    }
-                                }
-                            }
-                            Console.WriteLine(cellValue);
-                        }
-                        else
-                        {
-                            Console.WriteLine(cell.InnerText);
-                        }
+                        startParse = true;
+                        continue;
+                    }
+                    if (startParse)
+                    {
+                       list.Add(new Import()); 
                     }
                 }
+
+
+
             }
         }
         public static SharedStringItem GetSharedStringItemById(WorkbookPart workbookPart, int id)
         {
             return workbookPart.SharedStringTablePart.SharedStringTable.Elements<SharedStringItem>().ElementAt(id);
         }
+
+        static IEnumerable<string> GetStrings(WorkbookPart wk,SheetData sheetData)
+        {
+            foreach (var row in sheetData.Elements<Row>())
+            {
+                foreach (var cell in row.Elements<Cell>())
+                {
+                    string cellValue = string.Empty;
+
+                    if (cell.DataType != null)
+                    {
+                        if (cell.DataType == CellValues.SharedString)
+                        {
+                            int id = -1;
+
+                            if (Int32.TryParse(cell.InnerText, out id))
+                            {
+                                SharedStringItem item = GetSharedStringItemById(wk, id);
+
+                                if (item.Text != null)
+                                {
+                                    cellValue = item.Text.Text;
+                                }
+                                else if (item.InnerText != null)
+                                {
+                                    cellValue = item.InnerText;
+                                }
+                                else if (item.InnerXml != null)
+                                {
+                                    cellValue = item.InnerXml;
+                                }
+                            }
+                        }
+                        yield return cellValue;
+                       // Console.WriteLine(cellValue);
+                    }
+                    else
+                    {
+                        yield return cell.InnerText;
+                       // Console.WriteLine(cell.InnerText);
+                    }
+                }
+            }
+        } 
     }
+
 }
 
 class Import
